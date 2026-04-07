@@ -1,0 +1,7 @@
+{
+  "name": "midtrans-kiosk-api",
+  "version": "1.0.0",
+  "dependencies": {
+    "midtrans-client": "^1.4.2"
+  }
+}
