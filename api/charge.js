@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
   );
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
@@ -44,6 +44,10 @@ export default async function handler(req, res) {
     const response = await core.charge({
       payment_type: "gopay", // Memicu QRIS
       transaction_details: { gross_amount: amount, order_id: orderId },
+      expiry: {
+        unit: "minutes",
+        duration: 5,
+      },
     });
 
     const qrString = response.actions.find(
