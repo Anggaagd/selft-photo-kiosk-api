@@ -2,6 +2,7 @@
   "name": "midtrans-kiosk-api",
   "version": "1.0.0",
   "dependencies": {
+    "firebase-admin": "^13.7.0",
     "midtrans-client": "^1.4.2"
   }
 }
