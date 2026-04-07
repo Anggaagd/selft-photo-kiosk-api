@@ -1,39 +1,55 @@
 const admin = require('firebase-admin');
-// Inisialisasi Firebase Admin (Gunakan ENV untuk keamanan)
+
+// 1. Inisialisasi Firebase Admin (WAJIB ADA DI TIAP FILE API)
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
   });
 }
 
-let core = new midtransClient.CoreApi({
-  isProduction: false,
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY
-});
+const db = admin.firestore();
 
 export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Credentials', true);
+  // Tambahkan Header CORS agar aman
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  
+  // Midtrans mengirim notifikasi via POST
+  if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+
+  try {
+    const notification = req.body;
+    console.log("Notifikasi diterima dari Midtrans:", notification);
+
+    const orderId = notification.order_id;
+    const transactionStatus = notification.transaction_status;
+
+    // 2. Tentukan status yang dianggap "LUNAS"
+    let finalStatus = 'pending';
+    if (transactionStatus === 'settlement' || transactionStatus === 'capture') {
+      finalStatus = 'settlement';
+    } else if (transactionStatus === 'deny' || transactionStatus === 'cancel' || transactionStatus === 'expire') {
+      finalStatus = 'failed';
+    }
+
+    // 3. Update Firestore berdasarkan Order ID
+    if (orderId) {
+      await db.collection('payments').doc(orderId).update({
+        status: finalStatus,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        // Simpan log mentah dari Midtrans untuk jaga-jaga
+        rawNotification: transactionStatus 
+      });
+      console.log(`Order ${orderId} berhasil diupdate ke status: ${finalStatus}`);
+    }
+
+    // 4. Balas Midtrans dengan Status 200 agar mereka berhenti kirim notifikasi
+    return res.status(200).send('OK');
+    
+  } catch (error) {
+    console.error("Webhook Error:", error);
+    return res.status(500).json({ error: error.message });
   }
-  const notification = req.body;
-
-  const orderId = notification.order_id;
-  const status = notification.transaction_status;
-
-  if (status === 'settlement' || status === 'capture') {
-    // Update Firebase menjadi SETTLEMENT
-    await admin.firestore().collection('payments').doc(orderId).update({
-      status: 'settlement',
-      settledAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-  }
-
-  res.status(200).send('OK');
 }
