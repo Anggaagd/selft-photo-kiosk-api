@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
 
-  const { code, orderId } = req.body;
+  const { code, orderId, targetPackage } = req.body;
 
   try {
     const voucherRef = db.collection("vouchers").doc(code);
@@ -31,6 +31,12 @@ export default async function handler(req, res) {
     // 2. Cek apakah sudah pernah digunakan
     if (voucherData.isUsed) {
       return res.status(400).json({ message: "VOUCHER SUDAH TERPAKAI" });
+    }
+
+    if (targetPackage && voucherData.packageId !== targetPackage) {
+      return res.status(400).json({ 
+        message: `VOUCHER INI HANYA UNTUK PAKET ${voucherData.packageId}` 
+      });
     }
 
     // 3. PROSES VALIDASI (Atomik)
