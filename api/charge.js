@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") return res.status(405).end();
 
-  const { amount, packageId } = req.body;
+  const { amount, packageId, customerName, customerPhone } = req.body;
   const orderId = `ME-${Date.now()}`;
 
   try {
@@ -64,7 +64,10 @@ export default async function handler(req, res) {
       packageId,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       // Opsional: simpan waktu expired di DB untuk referensi
-      expiresAt: Date.now() + (5 * 60 * 1000) 
+      expiresAt: Date.now() + (5 * 60 * 1000),
+      customerName,
+      customerPhone,
+
     });
 
     res.json({ qrString, orderId });
